@@ -194,7 +194,7 @@
       background:linear-gradient(180deg, rgba(9,11,19,.1), rgba(9,11,19,.88) 25%, rgba(9,11,19,.96));
       backdrop-filter:blur(26px);border-top:1px solid rgba(255,255,255,.06)
     }
-    .tabs-grid{max-width:980px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+    .tabs-grid{max-width:980px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
     .tab{
       display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
       font-size:11px;font-weight:800;padding:10px 4px;border-radius:18px;color:var(--muted)
@@ -237,6 +237,11 @@
       </div>
     </div>
 
+    <div class="card" style="margin-top:12px">
+      <h2>Итог дня</h2>
+      <div class="mentor" id="dailyMentor">Пока данных мало. Ничего страшного — сначала дисциплина, потом магия статистики.</div>
+    </div>
+
     <div class="grid three" style="margin-top:12px">
       <div class="kpi">
         <div class="label">🔥 Калории сегодня</div>
@@ -270,10 +275,6 @@
       </div>
     </div>
 
-    <div class="card" style="margin-top:12px">
-      <h2>Итог дня</h2>
-      <div class="mentor" id="dailyMentor">Пока данных мало. Ничего страшного — сначала дисциплина, потом магия статистики.</div>
-    </div>
   </section>
 
   <section id="screen-habits" class="screen">
@@ -315,25 +316,6 @@
       <div class="card">
         <h2>📈 Статистика питания</h2>
         <div id="foodStats"></div>
-      </div>
-    </div>
-  </section>
-
-  <section id="screen-memes" class="screen">
-    <div class="card meme-card">
-      <div class="row"><h2>😂 Мем дня</h2><div class="meme-source" id="memeSource">источник: Reddit</div></div>
-      <div class="small muted" style="text-align:left">
-        Важный момент: без отдельного сервера реально и стабильно тянуть мемы с Reddit. 
-        Пикабу / Telegram / VK напрямую в браузерной PWA грузить ненадёжно из-за ограничений сайтов, CORS и авторизации.
-      </div>
-      <div class="meme-box">
-        <img id="memeImg" class="meme-img" alt="Мем" />
-        <div class="meme-title" id="memeTitle">Нажми кнопку ниже, и посмотрим, чем живёт интернет.</div>
-        <div class="small muted" id="memeMeta">Если мем не загрузился — попробуй ещё раз, Reddit иногда капризничает сильнее понедельника.</div>
-      </div>
-      <div class="nav-btns">
-        <button class="secondary" onclick="prevMeme()">← Предыдущий</button>
-        <button onclick="nextMeme()">Следующий мем →</button>
       </div>
     </div>
   </section>
@@ -380,7 +362,6 @@
     <div class="tab" onclick="showScreen('habits',this)"><span>✅</span>Привычки</div>
     <div class="tab" onclick="showScreen('food',this)"><span>🍽️</span>Питание</div>
     <div class="tab" onclick="showScreen('stats',this)"><span>📊</span>Стата</div>
-    <div class="tab" onclick="showScreen('memes',this)"><span>😂</span>Мемы</div>
     <div class="tab" onclick="showScreen('settings',this)"><span>⚙️</span>База</div>
   </div>
 </nav>
@@ -432,7 +413,6 @@ function showScreen(name, el){
   document.getElementById("screen-"+name).classList.add("active");
   document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
   el.classList.add("active");
-  if(name === "memes" && (!db.memeState.history || db.memeState.history.length===0)){ nextMeme(); }
   renderAll();
 }
 
@@ -740,78 +720,6 @@ function resetAll(){
   }
 }
 
-// MEMES
-const memeSubs = ["memes","dankmemes","me_irl","wholesomememes"];
-async function fetchRandomMeme(){
-  const sub = memeSubs[Math.floor(Math.random()*memeSubs.length)];
-  const url = `https://www.reddit.com/r/${sub}/hot.json?limit=50`;
-  const res = await fetch(url);
-  const data = await res.json();
-  const posts = (data.data?.children || [])
-    .map(x=>x.data)
-    .filter(p => !p.over_18 && (/\.(jpg|jpeg|png)$/i.test(p.url||"") || /i\.redd\.it|imgur\.com/i.test(p.url||"")) && !p.is_video && !p.stickied);
-  if(!posts.length) throw new Error("No memes");
-  const post = posts[Math.floor(Math.random()*posts.length)];
-  const meme = {
-    title: post.title || "Мем",
-    image: normalizeRedditUrl(post.url),
-    source: `Reddit · r/${sub}`,
-    meta: `👍 ${post.ups || 0} · 💬 ${post.num_comments || 0}`
-  };
-  if(!db.memeState) db.memeState = {history:[], index:-1};
-  db.memeState.history.push(meme);
-  db.memeState.index = db.memeState.history.length - 1;
-  save();
-}
-function normalizeRedditUrl(url){
-  if(!url) return "";
-  if(url.includes("preview.redd.it")) return url.split("?")[0].replace("preview.redd.it","i.redd.it");
-  if(url.includes("imgur.com") && !url.match(/\.(jpg|jpeg|png)$/i)) return url + ".jpg";
-  return url;
-}
-function renderMeme(){
-  const state=db.memeState || {history:[], index:-1};
-  const meme = state.history?.[state.index];
-  const img=document.getElementById("memeImg");
-  if(!meme){
-    img.removeAttribute("src");
-    document.getElementById("memeTitle").textContent = "Нажми кнопку ниже, и посмотрим, чем живёт интернет.";
-    document.getElementById("memeMeta").textContent = "Источник: Reddit. Без отдельного сервера это самый рабочий вариант.";
-    document.getElementById("memeSource").textContent = "источник: Reddit";
-    return;
-  }
-  img.src = meme.image;
-  img.onerror = function(){
-    document.getElementById("memeMeta").textContent = "Этот мем не догрузился. Бывает. Жми ещё раз.";
-  }
-  document.getElementById("memeTitle").textContent = meme.title;
-  document.getElementById("memeMeta").textContent = meme.meta;
-  document.getElementById("memeSource").textContent = "источник: " + meme.source;
-}
-function nextMeme(){
-  const state=db.memeState || {history:[], index:-1};
-  if(state.index < state.history.length - 1){
-    state.index++;
-    db.memeState=state;
-    save();
-  }else{
-    document.getElementById("memeTitle").textContent = "Загружаю свежий мем...";
-    document.getElementById("memeMeta").textContent = "Секунду.";
-    fetchRandomMeme().catch(() => {
-      document.getElementById("memeTitle").textContent = "Не удалось загрузить мем";
-      document.getElementById("memeMeta").textContent = "Проверь интернет и попробуй ещё раз.";
-    });
-  }
-}
-function prevMeme(){
-  const state=db.memeState || {history:[], index:-1};
-  if(state.index > 0){
-    state.index--;
-    db.memeState=state;
-    save();
-  }
-}
-
 function renderAll(){
   renderHome();
   renderHabits();
@@ -819,7 +727,6 @@ function renderAll(){
   renderStats();
   renderSettings();
   renderBase();
-  renderMeme();
 }
 document.getElementById("habitDate").value=todayISO();
 document.getElementById("foodDate").value=todayISO();
