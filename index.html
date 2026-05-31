@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Трекер" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <title>Трекер привычек и питания</title>
+  <style>
+    :root{
+      --bg:#0b1020; --card:#151b2f; --card2:#10182b; --line:#26324f;
+      --text:#f8fafc; --muted:#9ca3af; --green:#22c55e; --yellow:#f59e0b;
+      --red:#ef4444; --blue:#38bdf8; --purple:#a78bfa;
+      --input:#0f172a; --shadow: 0 18px 45px rgba(0,0,0,.28);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+      background:linear-gradient(160deg,#080b14 0%,#111827 48%,#0b1020 100%);
+      color:var(--text); min-height:100vh; padding-bottom:88px;
+    }
+    header{
+      position:sticky;top:0;z-index:5;padding:18px 16px 12px;
+      background:rgba(11,16,32,.86);backdrop-filter:blur(14px);
+      border-bottom:1px solid rgba(255,255,255,.07);
+    }
+    .top{display:flex;gap:12px;align-items:center;justify-content:space-between}
+    h1{font-size:20px;margin:0;letter-spacing:-.02em}
+    .date{color:var(--muted);font-size:13px;margin-top:4px}
+    .pill{
+      border:1px solid var(--line);background:rgba(255,255,255,.04);
+      border-radius:999px;padding:8px 10px;color:var(--text);font-weight:700;font-size:13px;
+    }
+    main{padding:14px;max-width:900px;margin:0 auto}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px}
+    @media (min-width:760px){.grid.two{grid-template-columns:1fr 1fr}.grid.three{grid-template-columns:repeat(3,1fr)}}
+    .card{
+      background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:14px;box-shadow:var(--shadow);
+    }
+    .card h2{font-size:17px;margin:0 0 12px}
+    .card h3{font-size:15px;margin:0 0 10px;color:#dbeafe}
+    .muted{color:var(--muted)}
+    .big{font-size:34px;font-weight:900;letter-spacing:-.05em}
+    .row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .habit{
+      display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;
+      padding:12px;border-radius:18px;background:rgba(15,23,42,.72);border:1px solid rgba(255,255,255,.06);margin-bottom:8px
+    }
+    .emoji{font-size:22px}.habit-title{font-weight:800}.hint{font-size:12px;color:var(--muted);margin-top:2px}
+    input,select,button,textarea{
+      font:inherit;border-radius:14px;border:1px solid var(--line);background:var(--input);color:var(--text);
+      padding:11px 12px;outline:none;
+    }
+    input[type="checkbox"]{width:24px;height:24px;accent-color:var(--green)}
+    input[type="number"]{width:92px}
+    input[type="time"]{width:112px}
+    button{
+      border:none;background:linear-gradient(135deg,#38bdf8,#6366f1);font-weight:900;cursor:pointer;
+      box-shadow:0 10px 25px rgba(56,189,248,.18);
+    }
+    button.secondary{background:#1f2937;box-shadow:none;border:1px solid var(--line)}
+    button.danger{background:linear-gradient(135deg,#ef4444,#f97316)}
+    .tabs{
+      position:fixed;left:0;right:0;bottom:0;z-index:10;display:grid;grid-template-columns:repeat(5,1fr);
+      background:rgba(11,16,32,.94);backdrop-filter:blur(18px);border-top:1px solid rgba(255,255,255,.08);
+      padding:8px 8px calc(8px + env(safe-area-inset-bottom));
+    }
+    .tab{
+      display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:center;color:var(--muted);
+      padding:8px 4px;border-radius:16px;font-size:11px;font-weight:800
+    }
+    .tab.active{background:rgba(56,189,248,.14);color:#e0f2fe}
+    .tab span{font-size:20px}
+    .screen{display:none}.screen.active{display:block}
+    .progress{height:12px;border-radius:999px;background:#1f2937;overflow:hidden;border:1px solid rgba(255,255,255,.08)}
+    .bar{height:100%;border-radius:999px;background:linear-gradient(90deg,#22c55e,#38bdf8);width:0%}
+    .kpi{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .kpi .box{background:rgba(15,23,42,.72);border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:12px}
+    .box b{display:block;font-size:22px;margin-top:4px}.box small{color:var(--muted)}
+    .food-row{
+      display:grid;grid-template-columns:1fr 72px auto;gap:8px;align-items:center;margin-bottom:8px
+    }
+    .food-list-item{
+      display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)
+    }
+    .tag{font-size:12px;padding:5px 8px;border-radius:999px;background:rgba(34,197,94,.12);color:#bbf7d0;font-weight:800}
+    .warn{background:rgba(245,158,11,.12);color:#fde68a}.bad{background:rgba(239,68,68,.12);color:#fecaca}
+    .table{width:100%;border-collapse:collapse;font-size:13px}
+    .table th,.table td{padding:9px;border-bottom:1px solid rgba(255,255,255,.07);text-align:left}
+    .table th{color:#bfdbfe}
+    .notice{background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.22);border-radius:18px;padding:12px;line-height:1.45}
+    .settings-row{display:grid;grid-template-columns:1fr 140px;gap:10px;align-items:center;margin-bottom:9px}
+    .search{width:100%;margin-bottom:10px}
+  </style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div>
+      <h1>Трекер привычек и питания</h1>
+      <div class="date" id="todayLabel"></div>
+    </div>
+    <div class="pill" id="installHint">iPhone PWA</div>
+  </div>
+</header>
+
+<main>
+  <section id="screen-home" class="screen active">
+    <div class="grid two">
+      <div class="card">
+        <h2>Сегодня по привычкам</h2>
+        <div class="row"><div class="big" id="habitPercentBig">0%</div><span id="habitStatus" class="tag">нет данных</span></div>
+        <div class="progress"><div class="bar" id="habitBar"></div></div>
+        <p class="muted" id="habitAdviceShort">Заполни привычки на сегодня.</p>
+      </div>
+      <div class="card">
+        <h2>Сегодня по питанию</h2>
+        <div class="kpi">
+          <div class="box"><small>Ккал</small><b id="kcalToday">0</b></div>
+          <div class="box"><small>Белки</small><b id="proteinToday">0 г</b></div>
+        </div>
+        <p class="muted" id="foodAdviceShort">Добавь продукты за день.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2>Быстрый вывод</h2>
+      <div class="notice" id="dailyMentor">Пока данных мало. Начни с галочек и пары продуктов — дальше приложение начнёт подсказывать точнее.</div>
+    </div>
+  </section>
+
+  <section id="screen-habits" class="screen">
+    <div class="card">
+      <h2>✅ Привычки на день</h2>
+      <div class="settings-row">
+        <label>Дата</label>
+        <input type="date" id="habitDate">
+      </div>
+      <div id="habitList"></div>
+      <button onclick="saveHabits()">Сохранить привычки</button>
+    </div>
+  </section>
+
+  <section id="screen-food" class="screen">
+    <div class="card">
+      <h2>🍽️ Питание за день</h2>
+      <div class="settings-row">
+        <label>Дата</label>
+        <input type="date" id="foodDate">
+      </div>
+
+      <input class="search" id="foodSearch" placeholder="Поиск продукта: яйцо, брокколи, курица..." oninput="renderFoodSelect()" />
+      <div class="food-row">
+        <select id="foodSelect"></select>
+        <input type="number" id="foodGrams" min="1" placeholder="г" />
+        <button onclick="addFood()">+</button>
+      </div>
+
+      <div id="foodTodayList"></div>
+    </div>
+  </section>
+
+  <section id="screen-stats" class="screen">
+    <div class="grid two">
+      <div class="card">
+        <h2>📊 Статистика привычек</h2>
+        <div id="habitStats"></div>
+      </div>
+      <div class="card">
+        <h2>📈 Статистика питания</h2>
+        <div id="foodStats"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-base" class="screen">
+    <div class="card">
+      <h2>⚙️ Настройки</h2>
+      <h3>Привычки</h3>
+      <div class="settings-row"><label>Норма велосипеда, км</label><input type="number" id="setBike"></div>
+      <div class="settings-row"><label>Сон до</label><input type="time" id="setSleep"></div>
+      <div class="settings-row"><label>Цель продуктивности, %</label><input type="number" id="setHabitGoal"></div>
+
+      <h3>Питание</h3>
+      <div class="settings-row"><label>Цель калорий</label><input type="number" id="setKcal"></div>
+      <div class="settings-row"><label>Цель белка, г</label><input type="number" id="setProtein"></div>
+      <div class="settings-row"><label>Цель жиров, г</label><input type="number" id="setFat"></div>
+      <div class="settings-row"><label>Цель углеводов, г</label><input type="number" id="setCarbs"></div>
+      <div class="settings-row"><label>Цель клетчатки, г</label><input type="number" id="setFiber"></div>
+      <div class="settings-row"><label>Лимит сахара, г</label><input type="number" id="setSugar"></div>
+      <button onclick="saveSettings()">Сохранить настройки</button>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2>📚 База продуктов</h2>
+      <input class="search" id="baseSearch" placeholder="Поиск по базе" oninput="renderBase()" />
+      <div id="baseList"></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2>Резервная копия</h2>
+      <div class="grid two">
+        <button class="secondary" onclick="exportData()">Экспорт JSON</button>
+        <button class="secondary" onclick="document.getElementById('importFile').click()">Импорт JSON</button>
+      </div>
+      <input id="importFile" type="file" accept="application/json" style="display:none" onchange="importData(event)">
+      <button class="danger" style="margin-top:10px;width:100%" onclick="resetAll()">Сбросить всё</button>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs">
+  <div class="tab active" onclick="showScreen('home',this)"><span>🏠</span>Сегодня</div>
+  <div class="tab" onclick="showScreen('habits',this)"><span>✅</span>Привычки</div>
+  <div class="tab" onclick="showScreen('food',this)"><span>🍽️</span>Питание</div>
+  <div class="tab" onclick="showScreen('stats',this)"><span>📊</span>Стата</div>
+  <div class="tab" onclick="showScreen('base',this)"><span>⚙️</span>База</div>
+</nav>
+
+<script>
+const LS_KEY = "lifeTrackerPWA_v1";
+
+const defaultSettings = {
+  bikeNorm: 10,
+  sleepTarget: "22:30",
+  habitGoal: 80,
+  kcalGoal: 2200,
+  proteinGoal: 150,
+  fatGoal: 70,
+  carbsGoal: 220,
+  fiberGoal: 25,
+  sugarLimit: 50
+};
+
+const defaultFoods = [
+  ["Яйцо варёное","Яйца",155,12.6,10.6,1.1,0,1.1],
+  ["Яйцо куриное","Яйца",157,12.7,10.9,0.7,0,0.7],
+  ["Белок яйца","Яйца",52,11,0.2,0.7,0,0.7],
+  ["Омлет без масла","Готовые блюда",145,12,10,1.5,0,1],
+  ["Куриная грудка варёная","Мясо / птица",165,31,3.6,0,0,0],
+  ["Куриная грудка жареная","Мясо / птица",200,30,8,0,0,0],
+  ["Куриное бедро готовое","Мясо / птица",209,26,10.9,0,0,0],
+  ["Индейка филе готовая","Мясо / птица",135,29,1.5,0,0,0],
+  ["Говядина постная готовая","Мясо / птица",187,29,8,0,0,0],
+  ["Свинина постная готовая","Мясо / птица",242,27,14,0,0,0],
+  ["Сало","Жиры",797,1.4,89,0,0,0],
+  ["Лосось готовый","Рыба",206,22,12,0,0,0],
+  ["Треска готовая","Рыба",82,18,0.7,0,0,0],
+  ["Минтай готовый","Рыба",72,16,1,0,0,0],
+  ["Креветки готовые","Рыба",99,24,0.3,0.2,0,0],
+  ["Творог 0%","Молочные",72,16.5,0.3,1.8,0,1.8],
+  ["Творог 2%","Молочные",103,18,2,3.3,0,3.3],
+  ["Творог 5%","Молочные",121,17,5,1.8,0,1.8],
+  ["Греческий йогурт 2%","Молочные",73,9,2,4,0,4],
+  ["Кефир 1%","Молочные",40,3,1,4,0,4],
+  ["Молоко 2.5%","Молочные",52,3,2.5,4.7,0,4.7],
+  ["Сыр твёрдый","Молочные",350,25,27,2,0,0.5],
+  ["Масло сливочное","Жиры",748,0.5,82.5,0.8,0,0.8],
+  ["Рис отварной","Крупы / гарниры",130,2.7,0.3,28,0.4,0.1],
+  ["Гречка отварная","Крупы / гарниры",110,3.6,1.1,21.3,2.7,0.4],
+  ["Овсянка сухая","Крупы / гарниры",370,13,7,60,10,1],
+  ["Овсяная каша на воде","Крупы / гарниры",88,3,1.7,15,1.7,0.3],
+  ["Макароны отварные","Крупы / гарниры",150,5,1,30,1.8,0.6],
+  ["Картофель отварной","Овощи / гарниры",82,2,0.1,17,1.8,0.8],
+  ["Брокколи","Овощи",34,2.8,0.4,7,2.6,1.7],
+  ["Цветная капуста","Овощи",25,1.9,0.3,5,2,1.9],
+  ["Капуста белокочанная","Овощи",27,1.3,0.1,6,2.5,3.2],
+  ["Огурец","Овощи",15,0.7,0.1,3.6,0.5,1.7],
+  ["Морковь","Овощи",41,0.9,0.2,10,2.8,4.7],
+  ["Свёкла варёная","Овощи",44,1.7,0.2,10,2,8],
+  ["Кабачок","Овощи",24,1.2,0.3,4.6,1,2.5],
+  ["Салат листовой","Овощи",15,1.4,0.2,2.9,1.3,0.8],
+  ["Фасоль варёная","Бобовые",127,8.7,0.5,22.8,6.4,0.3],
+  ["Нут варёный","Бобовые",164,8.9,2.6,27.4,7.6,4.8],
+  ["Чечевица варёная","Бобовые",116,9,0.4,20,7.9,1.8],
+  ["Банан","Фрукты / ягоды",89,1.1,0.3,23,2.6,12],
+  ["Яблоко","Фрукты / ягоды",52,0.3,0.2,14,2.4,10],
+  ["Апельсин","Фрукты / ягоды",47,0.9,0.1,12,2.4,9],
+  ["Киви","Фрукты / ягоды",61,1.1,0.5,15,3,9],
+  ["Авокадо","Жиры",160,2,15,9,7,0.7],
+  ["Миндаль","Орехи / семечки",579,21,50,22,12.5,4.4],
+  ["Грецкие орехи","Орехи / семечки",654,15,65,14,6.7,2.6],
+  ["Арахис","Орехи / семечки",567,26,49,16,8.5,4.7],
+  ["Масло оливковое","Жиры",884,0,100,0,0,0],
+  ["Масло подсолнечное","Жиры",899,0,99.9,0,0,0],
+  ["Хлеб белый","Хлеб",265,8,3.2,49,2.7,5],
+  ["Хлеб ржаной","Хлеб",210,6,1.2,43,5.8,3],
+  ["Хлеб цельнозерновой","Хлеб",247,9,3.5,41,7,5],
+  ["Лаваш тонкий","Хлеб",275,9,1.2,56,2,2],
+  ["Сахар","Сладкое",399,0,0,99.8,0,99.8],
+  ["Мёд","Сладкое",304,0.3,0,82,0.2,82],
+  ["Шоколад молочный","Сладкое",535,7,30,59,3.4,52],
+  ["Борщ","Супы / блюда",57,3,2.5,6,1.5,2],
+  ["Щи","Супы / блюда",45,2.5,2,4.5,1.3,1.8],
+  ["Курица с гречкой","Готовые блюда",150,15,4,14,1.5,0.5],
+  ["Курица с рисом","Готовые блюда",155,14,4,16,0.8,0.5],
+  ["Плов с курицей","Готовые блюда",170,8,7,19,1,1],
+  ["Котлета куриная","Готовые блюда",190,18,10,8,0.7,1],
+  ["Пельмени отварные","Готовые блюда",230,10,12,22,1.5,1],
+  ["Оливье","Салаты",198,5,16,8,1.5,2],
+  ["Винегрет","Салаты",92,1.7,5,10,2.5,4],
+  ["Салат овощной без масла","Салаты",25,1.2,0.2,5,2,2],
+  ["Цезарь с курицей","Салаты",180,11,12,7,1,2],
+  ["Шаурма с курицей","Фастфуд",220,11,10,22,2,3],
+  ["Картофель фри","Фастфуд",312,3.4,15,41,3.8,0.3],
+  ["Пицца","Фастфуд",266,11,10,33,2,3.5],
+  ["Вода","Напитки",0,0,0,0,0,0],
+  ["Чай без сахара","Напитки",1,0,0,0,0,0],
+  ["Кофе без сахара","Напитки",2,0.2,0,0,0,0],
+  ["Капучино без сахара","Напитки",45,2.5,2.2,3.5,0,3.5],
+  ["Сок апельсиновый","Напитки",45,0.7,0.2,10.4,0.2,8.4],
+  ["Кола","Напитки",42,0,0,10.6,0,10.6]
+].map((x,i)=>({id:i+1,name:x[0],category:x[1],kcal:x[2],protein:x[3],fat:x[4],carbs:x[5],fiber:x[6],sugar:x[7]}));
+
+function todayISO(){
+  const d=new Date();
+  d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+  return d.toISOString().slice(0,10);
+}
+
+let db = load();
+
+function load(){
+  const raw = localStorage.getItem(LS_KEY);
+  if(raw){
+    try{return JSON.parse(raw)}catch(e){}
+  }
+  return {settings:defaultSettings, foods:defaultFoods, habits:{}, foodLog:{}};
+}
+
+function save(){
+  localStorage.setItem(LS_KEY, JSON.stringify(db));
+  renderAll();
+}
+
+function showScreen(name, el){
+  document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
+  document.getElementById("screen-"+name).classList.add("active");
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  el.classList.add("active");
+  renderAll();
+}
+
+function habitDefaults(){
+  return {morning:false,bikeKm:0,reading:false,water:false,noSugar:false,noSmoking:false,noAlcohol:false,sleep:"",walk:false};
+}
+
+function getHabit(date){
+  return db.habits[date] || habitDefaults();
+}
+
+function calcHabit(h){
+  let score=0;
+  if(h.morning) score++;
+  score += Math.min((Number(h.bikeKm)||0)/db.settings.bikeNorm,1);
+  if(h.reading) score++;
+  if(h.water) score++;
+  if(h.noSugar) score++;
+  if(h.noSmoking) score++;
+  if(h.noAlcohol) score++;
+  if(h.sleep && h.sleep <= db.settings.sleepTarget) score++;
+  if(h.walk) score++;
+  const percent=Math.round(score/9*100);
+  let status = percent>=db.settings.habitGoal ? "✅ сильный день" : percent>=60 ? "🟡 нормальный день" : percent>=30 ? "🟠 слабый день" : percent>0 ? "🔴 почти провал" : "нет данных";
+  return {score:Math.round(score*10)/10,percent,status};
+}
+
+function saveHabits(){
+  const d=document.getElementById("habitDate").value || todayISO();
+  db.habits[d]={
+    morning:document.getElementById("h_morning").checked,
+    bikeKm:Number(document.getElementById("h_bike").value)||0,
+    reading:document.getElementById("h_reading").checked,
+    water:document.getElementById("h_water").checked,
+    noSugar:document.getElementById("h_noSugar").checked,
+    noSmoking:document.getElementById("h_noSmoking").checked,
+    noAlcohol:document.getElementById("h_noAlcohol").checked,
+    sleep:document.getElementById("h_sleep").value,
+    walk:document.getElementById("h_walk").checked
+  };
+  save();
+}
+
+function renderHabits(){
+  const d=document.getElementById("habitDate").value || todayISO();
+  document.getElementById("habitDate").value=d;
+  const h=getHabit(d);
+  document.getElementById("habitList").innerHTML = `
+    ${habitCheck("🏃","Утренняя зарядка","присутствие","h_morning",h.morning)}
+    <div class="habit"><div class="emoji">🚴</div><div><div class="habit-title">Велосипед</div><div class="hint">норма ${db.settings.bikeNorm} км</div></div><input id="h_bike" type="number" min="0" step="0.1" value="${h.bikeKm||0}"></div>
+    ${habitCheck("📚","Чтение книги","галочка, если читал","h_reading",h.reading)}
+    ${habitCheck("💧","2 литра воды","галочка, если закрыл норму","h_water",h.water)}
+    ${habitCheck("🍬","Без сахара","галочка = день без сахара","h_noSugar",h.noSugar)}
+    ${habitCheck("🚭","Без курения","галочка = день без курения","h_noSmoking",h.noSmoking)}
+    ${habitCheck("🎯","Без алкоголя","галочка = день без алкоголя","h_noAlcohol",h.noAlcohol)}
+    <div class="habit"><div class="emoji">😴</div><div><div class="habit-title">Лёг спать</div><div class="hint">цель до ${db.settings.sleepTarget}</div></div><input id="h_sleep" type="time" value="${h.sleep||""}"></div>
+    ${habitCheck("🚶","Прогулка вечером","галочка, если была","h_walk",h.walk)}
+  `;
+}
+
+function habitCheck(emoji,title,hint,id,val){
+  return `<div class="habit"><div class="emoji">${emoji}</div><div><div class="habit-title">${title}</div><div class="hint">${hint}</div></div><input id="${id}" type="checkbox" ${val?"checked":""}></div>`;
+}
+
+function renderFoodSelect(){
+  const q=(document.getElementById("foodSearch")?.value||"").toLowerCase();
+  const list=db.foods.filter(f=>f.name.toLowerCase().includes(q)||f.category.toLowerCase().includes(q)).slice(0,120);
+  const sel=document.getElementById("foodSelect");
+  if(!sel) return;
+  sel.innerHTML=list.map(f=>`<option value="${f.id}">${f.name}</option>`).join("");
+}
+
+function addFood(){
+  const d=document.getElementById("foodDate").value || todayISO();
+  const id=Number(document.getElementById("foodSelect").value);
+  const grams=Number(document.getElementById("foodGrams").value)||0;
+  if(!id || grams<=0){ alert("Выбери продукт и укажи граммы"); return; }
+  if(!db.foodLog[d]) db.foodLog[d]=[];
+  db.foodLog[d].push({id, grams, ts:Date.now()});
+  document.getElementById("foodGrams").value="";
+  save();
+}
+
+function removeFood(index){
+  const d=document.getElementById("foodDate").value || todayISO();
+  db.foodLog[d].splice(index,1);
+  save();
+}
+
+function foodById(id){return db.foods.find(f=>f.id===id)}
+function calcFoodItem(entry){
+  const f=foodById(entry.id); if(!f) return null;
+  const k=entry.grams/100;
+  return {food:f, grams:entry.grams, kcal:f.kcal*k, protein:f.protein*k, fat:f.fat*k, carbs:f.carbs*k, fiber:f.fiber*k, sugar:f.sugar*k};
+}
+function totalFood(date){
+  const arr=db.foodLog[date]||[];
+  return arr.map(calcFoodItem).filter(Boolean).reduce((t,x)=>{
+    t.kcal+=x.kcal;t.protein+=x.protein;t.fat+=x.fat;t.carbs+=x.carbs;t.fiber+=x.fiber;t.sugar+=x.sugar;return t;
+  },{kcal:0,protein:0,fat:0,carbs:0,fiber:0,sugar:0});
+}
+
+function renderFood(){
+  const d=document.getElementById("foodDate").value || todayISO();
+  document.getElementById("foodDate").value=d;
+  renderFoodSelect();
+  const arr=(db.foodLog[d]||[]).map(calcFoodItem).filter(Boolean);
+  const total=totalFood(d);
+  document.getElementById("foodTodayList").innerHTML = `
+    <div class="kpi" style="margin:12px 0">
+      <div class="box"><small>Ккал</small><b>${Math.round(total.kcal)}</b></div>
+      <div class="box"><small>Белки</small><b>${total.protein.toFixed(1)} г</b></div>
+      <div class="box"><small>Клетчатка</small><b>${total.fiber.toFixed(1)} г</b></div>
+      <div class="box"><small>Сахар</small><b>${total.sugar.toFixed(1)} г</b></div>
+    </div>
+    ${arr.length ? arr.map((x,i)=>`
+      <div class="food-list-item">
+        <div><b>${x.food.name}</b><div class="hint">${x.grams} г · ${Math.round(x.kcal)} ккал · Б ${x.protein.toFixed(1)} / Ж ${x.fat.toFixed(1)} / У ${x.carbs.toFixed(1)}</div></div>
+        <button class="secondary" onclick="removeFood(${i})">×</button>
+      </div>`).join("") : `<p class="muted">Пока ничего не добавлено.</p>`}
+  `;
+}
+
+function renderHome(){
+  const d=todayISO();
+  const h=calcHabit(getHabit(d));
+  const f=totalFood(d);
+  document.getElementById("todayLabel").textContent = new Date().toLocaleDateString("ru-RU",{weekday:"long",day:"numeric",month:"long"});
+  document.getElementById("habitPercentBig").textContent = h.percent+"%";
+  document.getElementById("habitStatus").textContent = h.status;
+  document.getElementById("habitStatus").className = "tag " + (h.percent>=80?"":h.percent>=50?"warn":"bad");
+  document.getElementById("habitBar").style.width = Math.min(h.percent,100)+"%";
+  document.getElementById("habitAdviceShort").textContent = habitShort(h);
+  document.getElementById("kcalToday").textContent = Math.round(f.kcal);
+  document.getElementById("proteinToday").textContent = f.protein.toFixed(1)+" г";
+  document.getElementById("foodAdviceShort").textContent = foodShort(f);
+  document.getElementById("dailyMentor").textContent = mentor(h,f);
+}
+
+function habitShort(h){
+  if(!h.percent) return "Заполни привычки на сегодня.";
+  if(h.percent>=80) return "Хороший день. Задача — повторить завтра.";
+  if(h.percent>=60) return "Нормально, но можно дожать 1–2 пункта.";
+  return "День проседает. Верни базу: вода, зарядка, сон.";
+}
+function foodShort(f){
+  if(!f.kcal) return "Добавь продукты за день.";
+  if(f.protein < db.settings.proteinGoal*.7) return "Белок просел. Яйца, творог, курица, рыба — в помощь.";
+  if(f.fiber < db.settings.fiberGoal*.7) return "Клетчатки мало. Брокколи и цветная капуста уже в базе.";
+  if(f.kcal > db.settings.kcalGoal) return "Калории выше цели. Проверь масла, сладкое и перекусы.";
+  return "Питание выглядит нормально.";
+}
+function mentor(h,f){
+  const parts=[];
+  parts.push(h.percent>=80 ? "Привычки сегодня держатся уверенно." : "По привычкам есть что улучшить.");
+  parts.push(f.kcal ? foodShort(f) : "По питанию пока нет записей.");
+  return parts.join(" ");
+}
+
+function renderStats(){
+  const habitRecords=Object.entries(db.habits).map(([date,h])=>({date,h,calc:calcHabit(h)})).sort((a,b)=>b.date.localeCompare(a.date));
+  const days=habitRecords.length;
+  const avg=days?Math.round(habitRecords.reduce((s,x)=>s+x.calc.percent,0)/days):0;
+  const strong=habitRecords.filter(x=>x.calc.percent>=db.settings.habitGoal).length;
+  const bike=habitRecords.reduce((s,x)=>s+(Number(x.h.bikeKm)||0),0).toFixed(1);
+
+  document.getElementById("habitStats").innerHTML = `
+    <table class="table">
+      <tr><th>Показатель</th><th>Значение</th></tr>
+      <tr><td>Дней с записями</td><td>${days}</td></tr>
+      <tr><td>Средняя продуктивность</td><td>${avg}%</td></tr>
+      <tr><td>Сильных дней</td><td>${strong}</td></tr>
+      <tr><td>Всего км на велосипеде</td><td>${bike}</td></tr>
+    </table>
+    <p class="muted">${avg>=80?"Система работает. Главное — не перегружать её новыми привычками.":avg>=60?"Нормально, но сон/вода/велосипед лучше держать стабильнее.":"Нужно упростить вход: начать с 3–4 базовых привычек."}</p>
+  `;
+
+  const foodDays=Object.keys(db.foodLog);
+  const totals=foodDays.map(d=>totalFood(d));
+  const sum=totals.reduce((t,x)=>{t.kcal+=x.kcal;t.protein+=x.protein;t.fiber+=x.fiber;t.sugar+=x.sugar;return t},{kcal:0,protein:0,fiber:0,sugar:0});
+  const fd=foodDays.length||1;
+  document.getElementById("foodStats").innerHTML = `
+    <table class="table">
+      <tr><th>Показатель</th><th>Среднее / день</th></tr>
+      <tr><td>Ккал</td><td>${Math.round(sum.kcal/fd)}</td></tr>
+      <tr><td>Белки</td><td>${(sum.protein/fd).toFixed(1)} г</td></tr>
+      <tr><td>Клетчатка</td><td>${(sum.fiber/fd).toFixed(1)} г</td></tr>
+      <tr><td>Сахар</td><td>${(sum.sugar/fd).toFixed(1)} г</td></tr>
+    </table>
+    <p class="muted">${foodDays.length?"Если средний белок и клетчатка держатся — уже хорошая база для похудения.":"Пока нет записей питания."}</p>
+  `;
+}
+
+function renderSettings(){
+  document.getElementById("setBike").value=db.settings.bikeNorm;
+  document.getElementById("setSleep").value=db.settings.sleepTarget;
+  document.getElementById("setHabitGoal").value=db.settings.habitGoal;
+  document.getElementById("setKcal").value=db.settings.kcalGoal;
+  document.getElementById("setProtein").value=db.settings.proteinGoal;
+  document.getElementById("setFat").value=db.settings.fatGoal;
+  document.getElementById("setCarbs").value=db.settings.carbsGoal;
+  document.getElementById("setFiber").value=db.settings.fiberGoal;
+  document.getElementById("setSugar").value=db.settings.sugarLimit;
+}
+function saveSettings(){
+  db.settings={
+    bikeNorm:Number(document.getElementById("setBike").value)||10,
+    sleepTarget:document.getElementById("setSleep").value||"22:30",
+    habitGoal:Number(document.getElementById("setHabitGoal").value)||80,
+    kcalGoal:Number(document.getElementById("setKcal").value)||2200,
+    proteinGoal:Number(document.getElementById("setProtein").value)||150,
+    fatGoal:Number(document.getElementById("setFat").value)||70,
+    carbsGoal:Number(document.getElementById("setCarbs").value)||220,
+    fiberGoal:Number(document.getElementById("setFiber").value)||25,
+    sugarLimit:Number(document.getElementById("setSugar").value)||50
+  };
+  save();
+}
+
+function renderBase(){
+  const q=(document.getElementById("baseSearch")?.value||"").toLowerCase();
+  const rows=db.foods.filter(f=>f.name.toLowerCase().includes(q)||f.category.toLowerCase().includes(q)).slice(0,80);
+  document.getElementById("baseList").innerHTML = rows.map(f=>`
+    <div class="food-list-item">
+      <div><b>${f.name}</b><div class="hint">${f.category} · ${f.kcal} ккал · Б ${f.protein} / Ж ${f.fat} / У ${f.carbs} · клетч. ${f.fiber}</div></div>
+      <span class="tag">${f.sugar} сах.</span>
+    </div>
+  `).join("");
+}
+
+function exportData(){
+  const blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download="life-tracker-backup.json"; a.click();
+  URL.revokeObjectURL(url);
+}
+function importData(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{try{db=JSON.parse(reader.result); save(); alert("Импорт готов");}catch(err){alert("Ошибка импорта")}};
+  reader.readAsText(file);
+}
+function resetAll(){
+  if(confirm("Точно сбросить все данные?")){
+    localStorage.removeItem(LS_KEY);
+    db=load();
+    renderAll();
+  }
+}
+
+function renderAll(){
+  renderHome();
+  renderHabits();
+  renderFood();
+  renderStats();
+  renderSettings();
+  renderBase();
+}
+
+document.getElementById("habitDate").value=todayISO();
+document.getElementById("foodDate").value=todayISO();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+}
+
+renderAll();
+</script>
+</body>
+</html>
